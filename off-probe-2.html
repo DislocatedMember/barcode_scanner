@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OFF Probe — read &amp; contribute</title>
+<style>
+  :root {
+    --ink:      #171A17;
+    --ink-soft: #5A6159;
+    --paper:    #E9ECE7;
+    --card:     #F5F7F3;
+    --rule:     #C3C9BF;
+    --laser:    #D9342B;
+    --have:     #2F6B4F;
+    --partial:  #B87D1F;
+    --missing:  #A8AEA4;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--mono); font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 840px; margin: 0 auto; padding: 24px 18px 90px; }
+
+  .mast { border-bottom: 2px solid var(--ink); padding-bottom: 14px; margin-bottom: 22px; }
+  .stripes { display: flex; gap: 2px; height: 24px; margin-bottom: 12px; }
+  .stripes i { background: var(--ink); display: block; }
+  .mast h1 {
+    font-family: var(--sans); font-size: clamp(26px, 6vw, 40px); font-weight: 800;
+    letter-spacing: -0.03em; line-height: 0.95; margin: 0 0 6px; text-transform: uppercase;
+  }
+  .mast p { margin: 0; color: var(--ink-soft); font-size: 12.5px; max-width: 56ch; }
+
+  .entry { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  input[type=text], input[type=password], input[type=number], textarea {
+    font-family: var(--mono); font-size: 15px; padding: 10px 12px;
+    border: 1px solid var(--rule); background: var(--card); color: var(--ink);
+    border-radius: 0; width: 100%;
+  }
+  #code { flex: 1 1 200px; width: auto; font-size: 20px; letter-spacing: 0.08em; border: 2px solid var(--ink); }
+  input::placeholder, textarea::placeholder { color: var(--missing); }
+  textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+
+  button {
+    font-family: var(--mono); font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 11px 15px; border: 2px solid var(--ink); background: var(--ink); color: var(--paper);
+    cursor: pointer; border-radius: 0;
+  }
+  button.ghost { background: transparent; color: var(--ink); }
+  button.sm { padding: 6px 10px; font-size: 11.5px; border-width: 1px; }
+  button:hover:not(:disabled) { background: var(--laser); border-color: var(--laser); color: #fff; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  :focus-visible { outline: 3px solid var(--laser); outline-offset: 2px; }
+
+  .samples { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--ink-soft); }
+  .samples button { background: transparent; color: var(--ink-soft); border: 1px solid var(--rule); letter-spacing: 0.03em; }
+  .samples button:hover { color: #fff; }
+
+  #cam { display: none; position: relative; margin: 14px 0; border: 2px solid var(--ink); background: #000; }
+  #cam.on { display: block; }
+  #cam video { display: block; width: 100%; max-height: 300px; object-fit: cover; }
+  .laser { position: absolute; left: 6%; right: 6%; height: 2px; background: var(--laser);
+           box-shadow: 0 0 12px var(--laser); animation: sweep 2.4s ease-in-out infinite; }
+  @keyframes sweep { 0%,100% { top: 22%; } 50% { top: 78%; } }
+  @media (prefers-reduced-motion: reduce) { .laser { animation: none; top: 50%; } }
+
+  .status { margin: 14px 0; padding: 11px 13px; border-left: 4px solid var(--rule); background: var(--card); font-size: 13px; }
+  .status.err { border-left-color: var(--laser); }
+  .status.ok  { border-left-color: var(--have); }
+  .status.hide { display: none; }
+  .status b { font-family: var(--sans); }
+  .status code { background: var(--paper); padding: 1px 4px; }
+
+  .panel { display: none; }
+  .panel.on { display: block; }
+
+  .prod { display: flex; gap: 14px; align-items: flex-start; margin: 22px 0 16px; }
+  .prod img { width: 76px; height: 76px; object-fit: contain; background: var(--card); border: 1px solid var(--rule); flex: none; }
+  .prod h2 { font-family: var(--sans); font-size: 21px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 3px; }
+  .prod .meta { color: var(--ink-soft); font-size: 12px; }
+
+  .chips { display: flex; gap: 8px; margin: 0 0 18px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--rule); background: var(--card); padding: 5px 9px; font-size: 12px; }
+  .chip b { font-family: var(--sans); font-size: 14px; }
+
+  h3.sec {
+    font-family: var(--sans); font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.16em; color: var(--ink-soft);
+    margin: 26px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--rule);
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  }
+  h3.sec span.hint { font-family: var(--mono); letter-spacing: 0; text-transform: none; font-weight: 400; font-size: 11px; }
+
+  .cov { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 2px; }
+  .cov button {
+    all: unset; display: block; cursor: default; padding: 7px 9px;
+    background: var(--card); border-left: 4px solid var(--missing);
+  }
+  .cov button.yes  { border-left-color: var(--have); }
+  .cov button.part { border-left-color: var(--partial); }
+  .cov button.no   { cursor: pointer; }
+  .cov button.no:hover, .cov button.part:hover { background: var(--paper); border-left-color: var(--laser); }
+  .cov .k { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+  .cov .v { font-family: var(--sans); font-weight: 700; font-size: 13px; }
+  .cov button.no .v { color: var(--missing); }
+
+  table.nut { width: 100%; border-collapse: collapse; }
+  table.nut td { padding: 6px 4px; border-bottom: 1px solid var(--rule); vertical-align: baseline; }
+  table.nut td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.nut td.lab { font-family: var(--sans); }
+  table.nut tr.dim td { color: var(--missing); }
+
+  .box { background: var(--card); padding: 11px 13px; font-size: 13px; line-height: 1.6; }
+  .tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+  .tags span { font-size: 11px; border: 1px solid var(--rule); padding: 2px 7px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+  .f { margin-bottom: 10px; }
+  .f label { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); margin-bottom: 3px; }
+  .f label em { font-style: normal; color: var(--laser); }
+  .f label .plain { text-transform: none; letter-spacing: 0; }
+  .f.was-empty input, .f.was-empty textarea { border-left: 3px solid var(--partial); }
+
+  .warn { margin: 12px 0; padding: 10px 12px; background: #FBF3E2; border-left: 4px solid var(--partial); font-size: 12.5px; }
+  .warn ul { margin: 5px 0 0; padding-left: 18px; }
+  .warn.hide { display: none; }
+
+  .auth { border: 1px solid var(--rule); padding: 12px 13px; margin: 18px 0; background: var(--card); }
+  .auth p { margin: 0 0 10px; font-size: 12px; color: var(--ink-soft); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  label.cb { display: flex; gap: 7px; align-items: flex-start; font-size: 12px; line-height: 1.45; margin: 12px 0; cursor: pointer; }
+  label.cb input { margin-top: 2px; flex: none; }
+
+  pre { background: var(--card); border: 1px solid var(--rule); padding: 11px; overflow: auto;
+        max-height: 340px; font-size: 11.5px; white-space: pre-wrap; word-break: break-all; }
+  details { margin-top: 22px; }
+  summary { cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-soft); }
+
+  footer { margin-top: 44px; padding-top: 14px; border-top: 1px solid var(--rule); font-size: 11.5px; color: var(--ink-soft); }
+  footer a { color: var(--ink-soft); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <div class="stripes" id="stripes" aria-hidden="true"></div>
+    <h1>Open Food Facts probe</h1>
+    <p>Scan a barcode, see what the database actually holds, then fill in what it doesn't. Gaps are editable — read the values off the package and send them back.</p>
+  </header>
+
+  <div class="entry">
+    <input type="text" id="code" inputmode="numeric" autocomplete="off" placeholder="EAN / GTIN" aria-label="Barcode">
+    <button id="go">Look up</button>
+    <button id="scan" class="ghost">Scan</button>
+  </div>
+  <div class="samples">
+    <span>Try:</span>
+    <button data-c="3017620422003">3017620422003</button>
+    <button data-c="4000417025005">4000417025005</button>
+    <button data-c="9999999999999">9999999999999 · absent</button>
+  </div>
+
+  <div id="cam"><video id="vid" playsinline muted></video><div class="laser"></div></div>
+  <div class="status hide" id="status"></div>
+
+  <section class="panel" id="result">
+    <div class="prod">
+      <img id="pimg" alt="" hidden>
+      <div>
+        <h2 id="pname"></h2>
+        <div class="meta" id="pmeta"></div>
+      </div>
+    </div>
+    <div class="chips" id="chips"></div>
+
+    <h3 class="sec">Field coverage <span class="hint" id="covhint"></span></h3>
+    <div class="cov" id="cov"></div>
+
+    <h3 class="sec">Nutrition</h3>
+    <div id="nutri"></div>
+
+    <h3 class="sec">Ingredients &amp; allergens</h3>
+    <div id="ings"></div>
+
+    <details>
+      <summary>Raw response</summary>
+      <pre id="raw"></pre>
+    </details>
+  </section>
+
+  <section class="panel" id="editor">
+    <h3 class="sec"><span id="edtitle">Fill in what's missing</span><span class="hint" id="edhint"></span></h3>
+
+    <div class="grid">
+      <div class="f"><label for="f_name">Product name <em id="req_name"></em></label><input type="text" id="f_name"></div>
+      <div class="f"><label for="f_brands">Brand</label><input type="text" id="f_brands"></div>
+      <div class="f"><label for="f_qty">Quantity <span class="plain">(e.g. 400 g)</span></label><input type="text" id="f_qty"></div>
+      <div class="f"><label for="f_serv">Serving size</label><input type="text" id="f_serv" placeholder="30 g"></div>
+    </div>
+    <div class="f"><label for="f_cats">Categories <span class="plain">— comma separated; needed for a Nutri-Score</span></label><input type="text" id="f_cats" placeholder="Breakfast cereals, Muesli"></div>
+    <div class="f"><label for="f_ings">Ingredients</label><textarea id="f_ings"></textarea></div>
+
+    <h3 class="sec">Nutrition per 100 g</h3>
+    <div class="grid" id="nutfields"></div>
+
+    <div class="warn hide" id="warn"></div>
+
+    <div class="auth">
+      <p>Open Food Facts credentials. Held in a variable for this page only — not stored, not sent anywhere except openfoodfacts.org.
+         No account? <a href="https://world.openfoodfacts.org/cgi/user.pl" target="_blank" rel="noopener">Create one</a>.</p>
+      <div class="grid">
+        <div class="f"><label for="f_user">Username <span class="plain">(not your email)</span></label><input type="text" id="f_user" autocomplete="username"></div>
+        <div class="f"><label for="f_pass">Password</label><input type="password" id="f_pass" autocomplete="current-password"></div>
+      </div>
+    </div>
+
+    <label class="cb">
+      <input type="checkbox" id="confirm">
+      <span>These values come off the actual package in front of me. This writes to the live public database and other people will rely on it.</span>
+    </label>
+
+    <div class="row">
+      <button id="preview" class="ghost">Preview request</button>
+      <button id="submit" disabled>Submit to Open Food Facts</button>
+    </div>
+
+    <details id="reqdetails">
+      <summary>Request body / curl</summary>
+      <pre id="reqbody">Nothing built yet — press Preview.</pre>
+      <div class="row" style="margin-top:8px">
+        <button class="sm ghost" id="copycurl">Copy curl (staging)</button>
+      </div>
+    </details>
+  </section>
+
+  <footer>
+    Data: Open Food Facts, <a href="https://opendatacommons.org/licenses/odbl/1.0/">ODbL</a>.
+    Reads use API v3.6 with a v2 fallback; writes use <code>/cgi/product_jqm2.pl</code>.
+    A browser can't set a custom User-Agent — a real app must send <code>AppName/Version (email)</code>.
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const PROD = 'https://world.openfoodfacts.org';
+const STAGE = 'https://world.openfoodfacts.net';
+
+// key, label, write param, unit
+const N = [
+  ['energy-kcal',   'Energy',             'nutriment_energy-kcal',   'kcal'],
+  ['fat',           'Fat',                'nutriment_fat',           'g'],
+  ['saturated-fat', 'of which saturates', 'nutriment_saturated-fat', 'g'],
+  ['carbohydrates', 'Carbohydrates',      'nutriment_carbohydrates', 'g'],
+  ['sugars',        'of which sugars',    'nutriment_sugars',        'g'],
+  ['fiber',         'Fibre',              'nutriment_fiber',         'g'],
+  ['proteins',      'Protein',            'nutriment_proteins',      'g'],
+  ['salt',          'Salt',               'nutriment_salt',          'g'],
+];
+
+let current = null;
+let currentCode = '';
+
+(() => {
+  const w = [3,1,2,1,1,4,1,2,3,1,1,2,5,1,2,1,3,1,1,4,2,1,3,1,1,2,1,5,2,1,1,3,1,2,4,1,1,2];
+  $('stripes').innerHTML = w.map(n => '<i style="width:' + (n*2) + 'px"></i>').join('');
+})();
+
+function say(msg, cls) { const s = $('status'); s.innerHTML = msg; s.className = 'status' + (cls ? ' ' + cls : ''); }
+function hush() { $('status').className = 'status hide'; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ---------------- READ ---------------- */
+
+async function lookup(code) {
+  code = String(code).replace(/\D/g, '');
+  if (!code) return say('Enter a barcode first.', 'err');
+  currentCode = code;
+  $('result').className = 'panel';
+  $('editor').className = 'panel';
+  say('Querying ' + code + '…');
+
+  let data = null, via = 'v3.6';
+  try {
+    let r = await fetch(PROD + '/api/v3.6/product/' + code + '.json');
+    if (r.status === 429 || r.status === 503)
+      return say('<b>Rate limited.</b> 15 product reads per minute per IP. Wait a minute.', 'err');
+    data = await r.json();
+    if (!data.product) {
+      via = 'v2';
+      r = await fetch(PROD + '/api/v2/product/' + code + '.json');
+      data = await r.json();
+    }
+  } catch (e) {
+    return say('<b>Request failed.</b> ' + esc(e.message) +
+      '<br>If this mentions CORS or the network, the page was opened as a local file — serve it over <code>localhost</code> or https instead.', 'err');
+  }
+
+  if (!data.product) {
+    current = null;
+    say('<b>Not in the database.</b> Nothing recorded for ' + code + '. Add it below — that is how products get in.', 'err');
+    $('raw').textContent = JSON.stringify(data, null, 2);
+    openEditor(null, code);
+    $('editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  current = data.product;
+  hush();
+  render(data.product, code, via, data);
+}
+
+function coverage(p) {
+  const nut = p ? (p.nutriments || {}) : {};
+  const filled = N.filter(function (r) { return nut[r[0] + '_100g'] !== undefined; }).length;
+  const img = p && (p.image_front_small_url || p.image_url);
+  return {
+    filled: filled,
+    rows: [
+      ['Name',        !!(p && (p.product_name || p.product_name_de)), null, 'f_name'],
+      ['Brand',       !!(p && p.brands), null, 'f_brands'],
+      ['Quantity',    !!(p && p.quantity), null, 'f_qty'],
+      ['Category',    !!(p && p.categories_tags && p.categories_tags.length), null, 'f_cats'],
+      ['Nutrients',   filled === N.length ? true : (filled ? 'part' : false), filled + '/' + N.length, 'nut_energy-kcal'],
+      ['Serving',     !!(p && p.serving_size), null, 'f_serv'],
+      ['Ingredients', !!(p && (p.ingredients_text_de || p.ingredients_text)), null, 'f_ings'],
+      ['Allergens',   !!(p && p.allergens_tags && p.allergens_tags.length), null, null],
+      ['Nutri-Score', !!(p && (p.nutriscore_grade || (p.nutriscore_data && p.nutriscore_data.grade))), null, null],
+      ['Image',       !!img, null, null]
+    ]
+  };
+}
+
+function render(p, code, via, whole) {
+  const name = p.product_name_de || p.product_name || '(no name recorded)';
+  $('pname').textContent = name;
+  $('pmeta').innerHTML = [
+    code, p.brands || null, p.quantity || null, 'via ' + via,
+    p.last_modified_t ? 'edited ' + new Date(p.last_modified_t * 1000).toISOString().slice(0,10) : null
+  ].filter(Boolean).map(esc).join(' &nbsp;·&nbsp; ');
+
+  const img = p.image_front_small_url || p.image_url;
+  $('pimg').hidden = !img;
+  if (img) { $('pimg').src = img; $('pimg').alt = name; }
+
+  const grade = p.nutriscore_grade || (p.nutriscore_data && p.nutriscore_data.grade);
+  const eco = p.ecoscore_grade || p.environmental_score_grade;
+  $('chips').innerHTML = [
+    grade ? '<span class="chip">Nutri-Score <b>' + esc(grade.toUpperCase()) + '</b></span>' : '',
+    p.nova_group ? '<span class="chip">NOVA <b>' + esc(p.nova_group) + '</b></span>' : '',
+    eco ? '<span class="chip">Green-Score <b>' + esc(eco.toUpperCase()) + '</b></span>' : '',
+    p.serving_size ? '<span class="chip">Serving <b>' + esc(p.serving_size) + '</b></span>' : ''
+  ].join('');
+
+  const cv = coverage(p);
+  const gaps = cv.rows.filter(function (r) { return r[1] !== true; }).length;
+  $('covhint').textContent = gaps ? gaps + ' gap' + (gaps > 1 ? 's' : '') + ' — tap one to fill it' : 'complete';
+  $('cov').innerHTML = cv.rows.map(function (r) {
+    const cls = r[1] === 'part' ? 'part' : r[1] === true ? 'yes' : 'no';
+    const label = r[2] || (r[1] === true ? 'yes' : 'missing');
+    const t = (r[1] !== true && r[3]) ? ' data-target="' + r[3] + '"' : '';
+    return '<button class="' + cls + '"' + t + '><span class="k">' + r[0] + '</span><br><span class="v">' + label + '</span></button>';
+  }).join('');
+  Array.prototype.forEach.call($('cov').querySelectorAll('button[data-target]'), function (b) {
+    b.onclick = function () {
+      openEditor(current, currentCode);
+      const el = $(b.dataset.target);
+      if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.focus({ preventScroll: true }); }
+    };
+  });
+
+  const nut = p.nutriments || {};
+  const perServ = N.some(function (r) { return nut[r[0] + '_serving'] !== undefined; });
+  const fmt = function (v, u) { return v === undefined ? '—' : (Math.round(v * 100) / 100) + ' ' + u; };
+  const rows = N.map(function (r) {
+    const g = nut[r[0] + '_100g'];
+    return '<tr class="' + (g === undefined ? 'dim' : '') + '"><td class="lab">' + r[1] + '</td>' +
+           '<td class="n">' + fmt(g, r[3]) + '</td>' +
+           (perServ ? '<td class="n">' + fmt(nut[r[0] + '_serving'], r[3]) + '</td>' : '') + '</tr>';
+  }).join('');
+  $('nutri').innerHTML = cv.filled
+    ? '<table class="nut"><tr><td class="lab"></td><td class="n"><b>per 100 g</b></td>' +
+      (perServ ? '<td class="n"><b>per serving</b></td>' : '') + '</tr>' + rows + '</table>'
+    : '<div class="box">No nutrition values recorded. Read them off the package and add them below.</div>';
+
+  const txt = p.ingredients_text_de || p.ingredients_text;
+  const tags = (p.allergens_tags || []).map(function (t) { return '<span>' + esc(t.replace(/^..:/, '')) + '</span>'; }).join('');
+  const traces = (p.traces_tags || []).map(function (t) { return '<span>trace: ' + esc(t.replace(/^..:/, '')) + '</span>'; }).join('');
+  $('ings').innerHTML = '<div class="box">' + (txt ? esc(txt) : '<i>No ingredient text.</i>') +
+    ((tags || traces) ? '<div class="tags">' + tags + traces + '</div>' : '') + '</div>';
+
+  $('raw').textContent = JSON.stringify(whole, null, 2);
+  $('result').className = 'panel on';
+  if (gaps) openEditor(p, code); else $('editor').className = 'panel';
+  $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ---------------- WRITE ---------------- */
+
+function openEditor(p, code) {
+  const isNew = !p;
+  $('edtitle').textContent = isNew ? 'Add ' + code + ' to the database' : "Fill in what's missing";
+  $('edhint').textContent = isNew ? 'nothing exists yet' : 'only fields you change get sent';
+  $('req_name').textContent = isNew ? '(required)' : '';
+
+  const nut = p ? (p.nutriments || {}) : {};
+  const set = function (id, val) {
+    const el = $(id);
+    el.value = val == null ? '' : val;
+    el.closest('.f').classList.toggle('was-empty', !val);
+    el.dataset.orig = el.value;
+  };
+  set('f_name',   p && (p.product_name_de || p.product_name));
+  set('f_brands', p && p.brands);
+  set('f_qty',    p && p.quantity);
+  set('f_serv',   p && p.serving_size);
+  set('f_cats',   p && p.categories);
+  set('f_ings',   p && (p.ingredients_text_de || p.ingredients_text));
+
+  $('nutfields').innerHTML = N.map(function (r) {
+    const v = nut[r[0] + '_100g'];
+    const has = v !== undefined;
+    return '<div class="f' + (has ? '' : ' was-empty') + '">' +
+      '<label for="nut_' + r[0] + '">' + r[1] + ' <span class="plain">(' + r[3] + ')</span></label>' +
+      '<input type="number" step="any" min="0" id="nut_' + r[0] + '" data-orig="' + (has ? v : '') + '" value="' + (has ? v : '') + '">' +
+      '</div>';
+  }).join('');
+
+  Array.prototype.forEach.call($('editor').querySelectorAll('input, textarea'), function (i) {
+    i.removeEventListener('input', validate);
+    i.addEventListener('input', validate);
+  });
+
+  $('editor').className = 'panel on';
+  validate();
+}
+
+function num(id) { const el = $(id); if (!el) return null; const v = el.value.trim(); return v === '' ? null : parseFloat(v); }
+
+function validate() {
+  const g = function (k) { return num('nut_' + k); };
+  const issues = [];
+  const fat = g('fat'), sat = g('saturated-fat'), carb = g('carbohydrates'),
+        sug = g('sugars'), pro = g('proteins'), fib = g('fiber'),
+        salt = g('salt'), kcal = g('energy-kcal');
+
+  if (sat != null && fat != null && sat > fat) issues.push('Saturates exceed total fat.');
+  if (sug != null && carb != null && sug > carb) issues.push('Sugars exceed total carbohydrates.');
+  const sum = [fat, carb, pro, fib, salt].reduce(function (a, b) { return a + (b || 0); }, 0);
+  if (sum > 100) issues.push('Macros add up to ' + sum.toFixed(1) + ' g per 100 g — over 100.');
+  if (salt != null && salt > 25) issues.push('Salt above 25 g/100 g — check you did not enter sodium in mg.');
+  if (kcal != null && kcal > 900) issues.push('Over 900 kcal/100 g exceeds pure fat — check kJ vs kcal.');
+  if (kcal != null && fat != null && carb != null && pro != null) {
+    const est = fat * 9 + carb * 4 + pro * 4;
+    if (est > 0 && Math.abs(est - kcal) / Math.max(est, kcal) > 0.25)
+      issues.push('Energy ' + kcal + ' kcal does not match the macros (≈' + Math.round(est) + ' kcal by 9/4/4).');
+  }
+
+  const w = $('warn');
+  if (issues.length) {
+    w.className = 'warn';
+    w.innerHTML = '<b>Check before sending:</b><ul>' + issues.map(function (i) { return '<li>' + i + '</li>'; }).join('') + '</ul>';
+  } else w.className = 'warn hide';
+
+  const changed = countChanges() > 0;
+  const named = !current ? $('f_name').value.trim() !== '' : true;
+  $('submit').disabled = !(changed && named && $('confirm').checked && $('f_user').value.trim() && $('f_pass').value);
+  return issues;
+}
+
+function buildBody() {
+  const out = {};
+  const text = [['f_name','product_name'], ['f_brands','brands'], ['f_qty','quantity'],
+                ['f_serv','serving_size'], ['f_cats','categories'], ['f_ings','ingredients_text']];
+  text.forEach(function (pair) {
+    const el = $(pair[0]), v = el.value.trim();
+    if (v && v !== (el.dataset.orig || '').trim()) out[pair[1]] = v;
+  });
+  N.forEach(function (r) {
+    const el = $('nut_' + r[0]);
+    if (!el) return;
+    const v = el.value.trim();
+    if (v !== '' && v !== (el.dataset.orig || '')) { out[r[2]] = v; out[r[2] + '_unit'] = r[3]; }
+  });
+  if (Object.keys(out).some(function (k) { return k.indexOf('nutriment_') === 0; })) out.nutrition_data_per = '100g';
+  return out;
+}
+
+function countChanges() {
+  return Object.keys(buildBody()).filter(function (k) {
+    return k.slice(-5) !== '_unit' && k !== 'nutrition_data_per';
+  }).length;
+}
+
+function fullBody(withCreds) {
+  const b = Object.assign({ code: currentCode }, buildBody(), { lc: 'de', countries: 'Germany' });
+  if (withCreds) { b.user_id = $('f_user').value.trim(); b.password = $('f_pass').value; }
+  return b;
+}
+
+function renderPreview() {
+  const b = fullBody(false);
+  const lines = Object.keys(b).map(function (k) { return '  ' + k + ' = ' + b[k]; }).join('\n');
+  const demo = Object.assign({}, b, { user_id: 'YOUR_USER', password: 'YOUR_PASS' });
+  const curl = 'curl -X POST ' + STAGE + '/cgi/product_jqm2.pl \\\n  -u off:off \\\n' +
+    Object.keys(demo).map(function (k) {
+      return "  -F '" + k + '=' + String(demo[k]).replace(/'/g, "'\\''") + "'";
+    }).join(' \\\n');
+  $('reqbody').textContent =
+    'POST ' + PROD + '/cgi/product_jqm2.pl\n' +
+    'Content-Type: application/x-www-form-urlencoded\n\n' +
+    (lines || '  (nothing changed yet)') +
+    '\n\n\n--- the same call against staging, safe to run ---\n\n' + curl;
+  $('reqdetails').open = true;
+}
+
+$('preview').onclick = function () {
+  renderPreview();
+  const n = countChanges();
+  say(n ? '<b>' + n + ' field' + (n > 1 ? 's' : '') + ' ready.</b> Nothing was submitted — this is only the request that would be sent.'
+        : 'No changes yet. Fill something in first.', n ? 'ok' : 'err');
+};
+
+$('copycurl').onclick = function () {
+  const t = $('reqbody').textContent;
+  const i = t.indexOf('curl');
+  if (i < 0) return say('Press Preview first.', 'err');
+  navigator.clipboard.writeText(t.slice(i)).then(
+    function () { say('Copied. It targets <b>staging</b> (<code>off:off</code>) — a throwaway copy of the database, safe to experiment against.', 'ok'); },
+    function () { say('Clipboard blocked — select the text in the preview box instead.', 'err'); });
+};
+
+$('submit').onclick = async function () {
+  const issues = validate();
+  if (issues.length && !confirm('These values look inconsistent:\n\n• ' + issues.join('\n• ') + '\n\nSubmit anyway?')) return;
+
+  const form = new URLSearchParams(fullBody(true));
+  $('submit').disabled = true;
+  say('Submitting…');
+
+  try {
+    const r = await fetch(PROD + '/cgi/product_jqm2.pl', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: form.toString()
+    });
+    const txt = await r.text();
+    let j = null;
+    try { j = JSON.parse(txt); } catch (_) {}
+
+    if (j && j.status === 1) {
+      say('<b>Saved.</b> ' + esc(j.status_verbose || '') +
+          ' — <a href="' + PROD + '/product/' + currentCode + '" target="_blank" rel="noopener">open the product page</a>. Re-reading it now.', 'ok');
+      setTimeout(function () { lookup(currentCode); }, 2500);
+    } else if (j) {
+      say('<b>Rejected.</b> ' + esc(j.status_verbose || JSON.stringify(j)) +
+          ' — the usual cause is using your email instead of your username.', 'err');
+    } else {
+      say('<b>Unexpected response.</b> The server sent HTML rather than JSON, which normally means the login failed. First 200 characters:<br><code>' +
+          esc(txt.slice(0, 200)) + '</code>', 'err');
+    }
+  } catch (e) {
+    say('<b>Submit failed.</b> ' + esc(e.message) +
+        '<br>If that is a CORS error, the write endpoint will not accept this origin from a browser — use the curl command in the preview, or route the write through a small backend.', 'err');
+  }
+  validate();
+};
+
+/* ---------------- input + camera ---------------- */
+$('go').onclick = function () { lookup($('code').value); };
+$('code').addEventListener('keydown', function (e) { if (e.key === 'Enter') lookup($('code').value); });
+Array.prototype.forEach.call(document.querySelectorAll('.samples button'), function (b) {
+  b.onclick = function () { $('code').value = b.dataset.c; lookup(b.dataset.c); };
+});
+
+let stream = null, running = false;
+
+$('scan').onclick = async function () {
+  if (running) return stopCam();
+  if (!window.isSecureContext)
+    return say('<b>Camera needs a secure context.</b> A file opened straight from Downloads is not one, so Chrome refuses before it even asks for permission. Serve the page over <code>https</code> or <code>localhost</code> and this button starts working.', 'err');
+  if (!('BarcodeDetector' in window))
+    return say('<b>No BarcodeDetector in this browser.</b> Chrome and Edge have it; Safari and Firefox do not. Type the number instead.', 'err');
+
+  try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); }
+  catch (e) { return say('<b>Camera unavailable.</b> ' + esc(e.message), 'err'); }
+
+  $('vid').srcObject = stream;
+  await $('vid').play();
+  $('cam').className = 'on';
+  $('scan').textContent = 'Stop';
+  running = true;
+  hush();
+
+  const det = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
+  const tick = async function () {
+    if (!running) return;
+    try {
+      const found = await det.detect($('vid'));
+      if (found.length) { const v = found[0].rawValue; $('code').value = v; stopCam(); lookup(v); return; }
+    } catch (_) {}
+    requestAnimationFrame(tick);
+  };
+  tick();
+};
+
+function stopCam() {
+  running = false;
+  if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+  stream = null;
+  $('cam').className = '';
+  $('scan').textContent = 'Scan';
+}
+
+$('code').focus();
+</script>
+</body>
+</html>
